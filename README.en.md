@@ -1,4 +1,4 @@
-# Shopping GRPO
+# ShopPilot-RL
 
 <div align="center">
 
@@ -23,7 +23,7 @@ a frozen benchmark
 
 </div>
 
-![Shopping GRPO project overview](docs/images/project-overview-pipeline.png)
+![ShopPilot-RL project overview](docs/images/project-overview-pipeline.png)
 
 ## What is ShopSimulator?
 
@@ -381,8 +381,3 @@ The evaluation protocol and Benchmark construction were also informed by
 [VitaBench: Benchmarking LLM Agents with Versatile Interactive Tasks in Real-world Applications](https://arxiv.org/pdf/2509.26490)
 and
 [EComAgentBench: Benchmarking Shopping Agents on Long-Horizon Tasks with Distributed Hidden Intent](https://arxiv.org/pdf/2606.17698).
-
-The repository organization and tutorial presentation were informed by
-[qiqihezh/agentic-grpo-longhorizon](https://github.com/qiqihezh/agentic-grpo-longhorizon).
-Thanks to the [OpenCode Go plan](https://dev.opencode.ai/go) for supporting the
-development workflow.

@@ -642,7 +642,7 @@ class RolloutTest(unittest.TestCase):
         self.assertEqual(captured["payload"]["max_tokens"], 512)
         self.assertEqual(captured["payload"]["temperature"], 0.2)
         self.assertEqual(captured["headers"]["Authorization"], "Bearer secret")
-        self.assertEqual(captured["headers"]["User-Agent"], "shopping-grpo-longhorizon/0.1")
+        self.assertEqual(captured["headers"]["User-Agent"], "shoppilot-rl/0.1")
 
     def test_openai_client_allows_bounded_completion_override(self):
         """本地推理服务必须收到单次生成上限，避免无工具文本耗尽上下文。"""

@@ -170,7 +170,7 @@ class VllmChatTokenCounter:
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
-            "User-Agent": "shopping-grpo-longhorizon/0.1",
+            "User-Agent": "shoppilot-rl/0.1",
         }
         if self.transport is not None:
             response = self.transport(self.url, payload, headers, self.timeout)
@@ -207,7 +207,7 @@ class VllmTextTokenCounter:
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
-            "User-Agent": "shopping-grpo-longhorizon/0.1",
+            "User-Agent": "shoppilot-rl/0.1",
         }
         if self.transport is not None:
             response = self.transport(self.url, payload, headers, self.timeout)

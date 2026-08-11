@@ -1,4 +1,4 @@
-"""Shopping GRPO 终局奖励的纯函数测试。"""
+"""ShopPilot-RL 终局奖励的纯函数测试。"""
 
 import unittest
 

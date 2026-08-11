@@ -169,16 +169,15 @@ class OpenAIChatClient:
             )
         else:
             payload.update({"temperature": self.temperature, "top_p": self.top_p})
-            # OpenCode Go defaults DeepSeek V4 to thinking enabled. Omitting the
-            # field therefore does not mean disabled; be explicit for this model
-            # family without sending a provider-specific field to local vLLM.
+            # Some hosted DeepSeek V4 endpoints default to thinking enabled.
+            # Disable it explicitly without sending provider-specific fields to local vLLM.
             if self.model.casefold().startswith("deepseek-v4"):
                 payload["thinking"] = {"type": "disabled"}
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
             # 避免 Cloudflare 将 Python urllib 默认客户端识别为自动化流量。
-            "User-Agent": "shopping-grpo-longhorizon/0.1",
+            "User-Agent": "shoppilot-rl/0.1",
         }
         url = f"{self.base_url}/chat/completions"
         for attempt in range(MODEL_COMPLETION_RETRIES + 1):

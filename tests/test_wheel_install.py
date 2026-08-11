@@ -42,7 +42,7 @@ class WheelInstallTest(unittest.TestCase):
             environment = temporary / "venv"
             binary_directory = "Scripts" if os.name == "nt" else "bin"
             python = environment / binary_directory / "python"
-            cli = environment / binary_directory / "shopping-grpo"
+            cli = environment / binary_directory / "shoppilot-rl"
             uv = shutil.which("uv")
             if uv:
                 subprocess.run(

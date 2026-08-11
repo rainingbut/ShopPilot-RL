@@ -112,7 +112,7 @@ class TrainLoraSftCliTest(unittest.TestCase):
         self.assertEqual(args.dtype, "auto")
         self.assertFalse(args.bf16)
         self.assertFalse(args.swanlab)
-        self.assertEqual(args.swanlab_project, "shopping-grpo")
+        self.assertEqual(args.swanlab_project, "shoppilot-rl")
 
     def test_swanlab_flags_are_opt_in_and_keep_a_stable_run_name(self):
         """国内监控必须显式启用，且实验名可由调用方固定以便对比。"""

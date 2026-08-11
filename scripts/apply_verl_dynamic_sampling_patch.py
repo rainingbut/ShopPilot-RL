@@ -18,9 +18,9 @@ EXPECTED_ORIGINAL_SHA256 = "de58d295cf86656a28196b0718168d4a11666f3e30957b7e1669
 EXPECTED_PATCHED_SHA256 = "684b491e20ba9d41e91d5010186d4d08b01a01fc67f8a77d17c086b0381e00a3"
 SUPERSEDED_PATCHED_SHA256 = "fc3564cc5680a9fa92ca7b0a9bc3ae87ccdc90c498ab1bfe34c6796d6c54fb5a"
 PATCH_MARKER = "SHOPPING_GRPO_DYNAMIC_SAMPLING_PATCH_V3"
-BACKUP_SUFFIX = ".shopping-grpo-dynamic-sampling.orig"
+BACKUP_SUFFIX = ".shoppilot-rl-dynamic-sampling.orig"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-PATCH_FILE = PROJECT_ROOT / "patches/verl-0.8.0-shopping-dynamic-sampling.patch"
+PATCH_FILE = PROJECT_ROOT / "patches/verl-0.8.0-shoppilot-dynamic-sampling.patch"
 
 
 def sha256(path: Path) -> str:
@@ -136,7 +136,7 @@ def restore_patch(target: Path) -> None:
             f"refusing invalid backup: expected {EXPECTED_ORIGINAL_SHA256}, got {backup_hash}"
         )
 
-    restore_temp = target.with_name(target.name + ".shopping-grpo-restore.tmp")
+    restore_temp = target.with_name(target.name + ".shoppilot-rl-restore.tmp")
     shutil.copy2(backup, restore_temp)
     restore_temp.replace(target)
     if sha256(target) != EXPECTED_ORIGINAL_SHA256:

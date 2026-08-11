@@ -83,7 +83,7 @@ def parse_args():
     parser.add_argument("--resume-from-checkpoint", default=None)
     parser.add_argument("--max-steps", type=int, default=-1, help="最大训练步数（-1=完整 epoch）；用于冒烟测试")
     parser.add_argument("--swanlab", action="store_true", help="启用 SwanLab 训练监控")
-    parser.add_argument("--swanlab-project", default="shopping-grpo", help="SwanLab project 名")
+    parser.add_argument("--swanlab-project", default="shoppilot-rl", help="SwanLab project 名")
     parser.add_argument("--swanlab-run-name", default=None, help="SwanLab run 名；默认自动生成")
     parser.add_argument(
         "--swanlab-mode",

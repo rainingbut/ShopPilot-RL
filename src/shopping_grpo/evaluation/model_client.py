@@ -115,7 +115,7 @@ class OpenAIJSONClient:
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
-            "User-Agent": "shopping-grpo-longhorizon-evaluator/0.1",
+            "User-Agent": "shoppilot-rl-evaluator/0.1",
         }
         url = f"{self.base_url}/chat/completions"
         started = time.monotonic()

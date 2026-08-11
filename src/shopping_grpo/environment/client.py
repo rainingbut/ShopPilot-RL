@@ -117,7 +117,7 @@ class ShopAgentEnv:
             data=body,
             headers={
                 "Content-Type": "application/json",
-                "User-Agent": f"shopping-grpo/{__version__}",
+                "User-Agent": f"shoppilot-rl/{__version__}",
             },
             method="POST",
         )

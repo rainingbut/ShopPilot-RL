@@ -35,7 +35,7 @@ class PublicEntrypointTest(unittest.TestCase):
             sys,
             "argv",
             [
-                "shopping-grpo",
+                "shoppilot-rl",
                 "evaluate",
                 str(root / "examples/trajectories.jsonl"),
             ],

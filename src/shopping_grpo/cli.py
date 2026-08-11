@@ -71,8 +71,8 @@ def _smoke(args: argparse.Namespace) -> None:
 def parse_args() -> argparse.Namespace:
     """定义公开子命令并返回解析后的参数。"""
     parser = argparse.ArgumentParser(
-        prog="shopping-grpo",
-        description="Shopping GRPO public CPU/offline utilities",
+        prog="shoppilot-rl",
+        description="ShopPilot-RL public CPU/offline utilities",
     )
     commands = parser.add_subparsers(dest="command", required=True)
 

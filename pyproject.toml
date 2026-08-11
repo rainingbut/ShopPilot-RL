@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "shopping-grpo"
+name = "shoppilot-rl"
 version = "0.1.0"
 description = "ShopSimulator shopping-agent post-training and trajectory evaluation"
 readme = "README.md"
@@ -47,7 +47,7 @@ dev = [
 ]
 
 [project.scripts]
-shopping-grpo = "shopping_grpo.cli:main"
+shoppilot-rl = "shopping_grpo.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -266,8 +266,8 @@ def validate_swanlab_tracking(config):
     if not log_dir:
         raise SystemExit("Reward v3 GRPO requires SWANLAB_LOG_DIR")
     resolved_log_dir = Path(log_dir).resolve()
-    if str(config.trainer.get("project_name")) != "shopping-grpo":
-        raise SystemExit("Reward v3 GRPO SwanLab project must be shopping-grpo")
+    if str(config.trainer.get("project_name")) != "shoppilot-rl":
+        raise SystemExit("Reward v3 GRPO SwanLab project must be shoppilot-rl")
     print(
         "SwanLab online preflight passed: "
         + json.dumps(

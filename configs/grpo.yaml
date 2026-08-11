@@ -125,7 +125,7 @@ trainer:
   test_freq: 50
   val_before_train: true
   logger: [console]
-  project_name: shopping-grpo
+  project_name: shoppilot-rl
   experiment_name: shopping-agent-grpo
   default_local_dir: ${oc.env:GRPO_OUTPUT_DIR}
   n_gpus_per_node: 1

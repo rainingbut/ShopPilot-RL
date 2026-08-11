@@ -8,7 +8,7 @@
     "seed": 20260808
   },
   "reward": "shopsimulator-reward-v3",
-  "schema_version": "shopping-grpo-dataset-v1",
+  "schema_version": "shoppilot-grpo-dataset-v1",
   "train": {
     "jsonl": "data/grpo/train.jsonl",
     "parquet": "data/grpo/train.parquet",
