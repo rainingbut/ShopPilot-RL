@@ -79,6 +79,11 @@ def project_observation(
     raw_buttons = clickable_buttons(observation)
     raw_asins = product_ids(observation)
     page_type = _page_type(observation)
+    if page_type == "search_results" and len(raw_asins) > search_top_k:
+        raise ObservationProjectionError(
+            f"raw search page has {len(raw_asins)} products, above configured "
+            f"page capacity {search_top_k}"
+        )
     effective_budget = {
         "search_results": token_budget,
         "product_detail": detail_token_budget,

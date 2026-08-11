@@ -20,25 +20,128 @@ from shopping_grpo.evaluation.rollout import (
 )
 
 
+PRODUCT_ASIN = "100000000001"
+
+
+def search_home_state():
+    return {
+        "observation_version": "shopping-observation-v2",
+        "page_type": "search_home",
+        "search_available": True,
+        "actions": [],
+    }
+
+
+def search_results_state(query="乳胶枕"):
+    product = {
+        "rank": 1,
+        "asin": PRODUCT_ASIN,
+        "title": "乳胶枕",
+        "brand": "test brand",
+        "category": "pillow",
+        "price": 99.0,
+        "key_attributes": ["latex"],
+    }
+    return {
+        "observation_version": "shopping-observation-v2",
+        "page_type": "search_results",
+        "search_available": False,
+        "actions": ["back to search", PRODUCT_ASIN],
+        "query": query,
+        "normalized_query": query,
+        "page": 1,
+        "total_pages": 1,
+        "total_results": 1,
+        "rank_start": 1,
+        "rank_end": 1,
+        "products": [product],
+    }
+
+
+def product_state(actions, *, selected_options=None):
+    return {
+        "observation_version": "shopping-observation-v2",
+        "page_type": "product_detail",
+        "search_available": False,
+        "actions": list(actions),
+        "product": {
+            "asin": PRODUCT_ASIN,
+            "title": "乳胶枕",
+            "brand": "test brand",
+            "category": "pillow",
+            "price": 99.0,
+            "key_attributes": ["latex"],
+        },
+        "selected_price": 99.0,
+        "selected_options": selected_options or {},
+        "available_options": {"pattern": ["满天星"]},
+    }
+
+
+def information_state(subpage="Features"):
+    state = product_state(["< Prev"])
+    state.update(
+        {
+            "page_type": "information_subpage",
+            "subpage": subpage,
+            "content": "public product information",
+        }
+    )
+    return state
+
+
+def gold_reward_detail(utility=1.0):
+    pass_gate = {
+        "status": "pass",
+        "passed": True,
+        "verifiable": True,
+        "comparator": "exact",
+        "source_field": "catalog",
+    }
+    return {
+        "reward_version": "shopsimulator-reward-v3",
+        "reward_type": "gold_purchase",
+        "reward_valid": True,
+        "termination_reason": "gold_purchase",
+        "target_asin_match": True,
+        "hard_gates": {"category": pass_gate, "budget": pass_gate},
+        "weighted_score": 1.0,
+        "evidence_coverage": 1.0,
+        "dimension_scores": {
+            "brand": 1.0,
+            "model": 1.0,
+            "core_functions": 1.0,
+            "key_options": 1.0,
+        },
+        "terminal_utility": float(utility),
+        "purchase_success": True,
+        "sampling_invalid": False,
+    }
+
+
 class FakeEnv:
     def __init__(self, **kwargs):
         self.actions = []
         self.released = False
 
     def reset(self, task_id):
-        return {"env_idx": 0, "instruction": f"Instruction: task {task_id}"}
+        return {
+            "env_idx": 0,
+            "instruction": f"Instruction: task {task_id}",
+            "observation_state": search_home_state(),
+        }
 
     def step(self, action):
         self.actions.append(action)
         if action == "search[乳胶枕]":
             return {
-                "instruction": "results [SEP] 100000000001 [SEP] 乳胶枕",
+                "observation_state": search_results_state(),
                 "reward": 0.0,
                 "done": False,
             }
         if action == "click[100000000001]":
             return {
-                "instruction": 'detail\n\n可点击的按钮: ["Buy Now"]',
+                "observation_state": product_state(["Buy Now"]),
                 "reward": 0.0,
                 "done": False,
             }
@@ -48,7 +151,7 @@ class FakeEnv:
             "done": True,
             "over": True,
             "purchase": {"asin": "A1"},
-            "reward_detail": {"r_type": 1, "r_att": 1, "r_option": 1, "r_price": 1},
+            "reward_detail": gold_reward_detail(),
         }
 
     def release(self):
@@ -84,25 +187,25 @@ class GuardRecoveryEnv(FakeEnv):
         self.actions.append(action)
         if action == "search[乳胶枕]":
             return {
-                "instruction": "results [SEP] 100000000001 [SEP] 乳胶枕",
+                "observation_state": search_results_state(),
                 "reward": 0.0,
                 "done": False,
             }
         if action == "click[100000000001]":
             return {
-                "instruction": 'detail\n\n可点击的按钮: ["Features", "Buy Now"]',
+                "observation_state": product_state(["Features", "Buy Now"]),
                 "reward": 0.0,
                 "done": False,
             }
         if action == "click[Features]":
             return {
-                "instruction": 'features\n\n可点击的按钮: ["< Prev"]',
+                "observation_state": information_state(),
                 "reward": 0.0,
                 "done": False,
             }
         if action == "click[< Prev]":
             return {
-                "instruction": 'detail\n\n可点击的按钮: ["Features", "Buy Now"]',
+                "observation_state": product_state(["Features", "Buy Now"]),
                 "reward": 0.0,
                 "done": False,
             }
@@ -113,7 +216,7 @@ class GuardRecoveryEnv(FakeEnv):
                 "done": True,
                 "over": True,
                 "purchase": {"asin": "A1"},
-                "reward_detail": {"r_type": 1, "r_att": 1, "r_option": 1, "r_price": 1},
+                "reward_detail": gold_reward_detail(),
             }
         raise AssertionError(f"unexpected action: {action}")
 
@@ -275,22 +378,25 @@ class RolloutTest(unittest.TestCase):
             def step(self, action):
                 self.actions.append(action)
                 if action == "search[乳胶枕]":
-                    return {"instruction": "results [SEP] 100000000001", "reward": 0.0, "done": False}
+                    return {"observation_state": search_results_state(), "reward": 0.0, "done": False}
                 if action == "click[100000000001]":
                     return {
-                        "instruction": 'detail\n\n可点击的按钮: ["满天星", "Description", "Buy Now"]',
+                        "observation_state": product_state(["满天星", "Description", "Buy Now"]),
                         "reward": 0.0,
                         "done": False,
                     }
                 if action == "click[满天星]":
                     return {
-                        "instruction": 'selected\n\n可点击的按钮: ["Description", "Buy Now"]',
+                        "observation_state": product_state(
+                            ["Description", "Buy Now"],
+                            selected_options={"pattern": "满天星"},
+                        ),
                         "reward": 0.0,
                         "done": False,
                     }
                 if action == "click[Description]":
                     return {
-                        "instruction": 'details\n\n可点击的按钮: ["Buy Now"]',
+                        "observation_state": product_state(["Buy Now"]),
                         "reward": 0.0,
                         "done": False,
                     }
@@ -301,7 +407,7 @@ class RolloutTest(unittest.TestCase):
                         "done": True,
                         "over": True,
                         "purchase": {"asin": "A1"},
-                        "reward_detail": {"r_type": 1, "r_att": 1, "r_option": 1, "r_price": 1},
+                        "reward_detail": gold_reward_detail(),
                     }
                 raise AssertionError(action)
 
@@ -334,16 +440,19 @@ class RolloutTest(unittest.TestCase):
             def step(self, action):
                 self.actions.append(action)
                 if action == "search[乳胶枕]":
-                    return {"instruction": "results [SEP] 100000000001", "reward": 0.0, "done": False}
+                    return {"observation_state": search_results_state(), "reward": 0.0, "done": False}
                 if action == "click[100000000001]":
                     return {
-                        "instruction": 'detail\n\n可点击的按钮: ["满天星", "Buy Now"]',
+                        "observation_state": product_state(["满天星", "Buy Now"]),
                         "reward": 0.0,
                         "done": False,
                     }
                 if action == "click[满天星]":
                     return {
-                        "instruction": 'selected\n\n可点击的按钮: ["Buy Now"]',
+                        "observation_state": product_state(
+                            ["Buy Now"],
+                            selected_options={"pattern": "满天星"},
+                        ),
                         "reward": 0.0,
                         "done": False,
                     }
@@ -354,7 +463,7 @@ class RolloutTest(unittest.TestCase):
                         "done": True,
                         "over": True,
                         "purchase": {"asin": "A1"},
-                        "reward_detail": {"r_type": 1, "r_att": 1, "r_option": 1, "r_price": 1},
+                        "reward_detail": gold_reward_detail(),
                     }
                 raise AssertionError(action)
 

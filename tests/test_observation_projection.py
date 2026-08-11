@@ -1,6 +1,5 @@
 """Observation projection preserves actionable state and bounds visible tokens."""
 
-import json
 import unittest
 
 from shopping_grpo.environment.actions import (
@@ -17,23 +16,37 @@ from shopping_grpo.environment.observation import render_structured_observation
 
 
 def search_page(product_count=12, page=1):
-    segments = [
-        "Instruction:",
-        "find a useful product",
-        "Back to Search",
-        f"Page {page} (Total results: 40)",
-        "Next >",
-    ]
-    buttons = ["back to search", "next >"]
-    for index in range(product_count):
-        asin = f"{100000000000 + index}"
-        segments.extend([asin, f"product title {index} " + "x" * 40, f"{index + 1}.0"])
-        buttons.append(asin)
-    return (
-        " [SEP] ".join(segments)
-        + "\n\n搜索功能是否可用: False"
-        + "\n\n可点击的按钮: "
-        + json.dumps(buttons, ensure_ascii=False)
+    rank_start = (page - 1) * 20 + 1
+    products = []
+    for offset in range(product_count):
+        rank = rank_start + offset
+        products.append(
+            {
+                "rank": rank,
+                "asin": f"{100000000000 + rank}",
+                "title": f"product title {rank} " + "x" * 80,
+                "brand": "example brand",
+                "category": "example category",
+                "price": float(rank),
+                "key_attributes": ["durable", "compact"],
+            }
+        )
+    actions = ["back to search", "next >", *[item["asin"] for item in products]]
+    return render_structured_observation(
+        {
+            "observation_version": "shopping-observation-v2",
+            "page_type": "search_results",
+            "search_available": False,
+            "actions": actions,
+            "query": "useful product",
+            "normalized_query": "useful product",
+            "page": page,
+            "total_pages": 2,
+            "total_results": 40,
+            "rank_start": rank_start,
+            "rank_end": rank_start + product_count - 1,
+            "products": products,
+        }
     )
 
 
@@ -89,7 +102,7 @@ class ObservationProjectionTest(unittest.TestCase):
             search_top_k=20,
         )
 
-        self.assertIn("page: Page 2", visible)
+        self.assertIn("Page 2 of 2", visible)
         self.assertEqual(product_ids(visible), product_ids(raw))
 
     def test_capacity_mismatch_fails_instead_of_silently_dropping_products(self):

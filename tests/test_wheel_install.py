@@ -38,7 +38,7 @@ class WheelInstallTest(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            wheel = next(dist.glob("shopping_grpo-*.whl"))
+            wheel = next(dist.glob("shoppilot_rl-*.whl"))
             environment = temporary / "venv"
             binary_directory = "Scripts" if os.name == "nt" else "bin"
             python = environment / binary_directory / "python"
