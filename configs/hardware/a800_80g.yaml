@@ -1,0 +1,44 @@
+{
+  "schema_version": "shopping-hardware-profile-v1",
+  "name": "a800_80g",
+  "description": "A800 80 GB near-canonical profile with Liger-enabled SFT.",
+  "grpo": {
+    "hydra_overrides": [
+      "data.train_batch_size=2",
+      "data.val_batch_size=2",
+      "data.max_prompt_length=4096",
+      "data.max_response_length=20480",
+      "actor_rollout_ref.actor.ppo_mini_batch_size=2",
+      "actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1",
+      "actor_rollout_ref.actor.ppo_max_token_len_per_gpu=24576",
+      "actor_rollout_ref.rollout.n=4",
+      "actor_rollout_ref.rollout.gpu_memory_utilization=0.40",
+      "actor_rollout_ref.rollout.max_num_seqs=8",
+      "actor_rollout_ref.rollout.max_model_len=24576",
+      "actor_rollout_ref.rollout.max_num_batched_tokens=24576",
+      "actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu=24576",
+      "actor_rollout_ref.rollout.agent.num_workers=8",
+      "actor_rollout_ref.rollout.multi_turn.max_tool_response_length=16384",
+      "actor_rollout_ref.ref.log_prob_max_token_len_per_gpu=24576"
+    ],
+    "environment": {
+      "SHOPPING_HARDWARE_PROFILE": "a800_80g",
+      "SHOPPING_CONTEXT_WINDOW_TOKENS": 24576,
+      "SHOPPING_CONTEXT_GENERATION_RESERVE_TOKENS": 512,
+      "SHOPPING_CONTEXT_SAFETY_MARGIN_TOKENS": 512,
+      "SHOPPING_CONTEXT_INPUT_BUDGET_TOKENS": 16384,
+      "SHOPPING_CONTEXT_COMPACTION_ENABLE": false,
+      "SHOPPING_OBSERVATION_TOKEN_BUDGET": 1536,
+      "SHOPPING_OBSERVATION_DETAIL_TOKEN_BUDGET": 4096,
+      "SHOPPING_OBSERVATION_GENERIC_TOKEN_BUDGET": 768,
+      "SHOPPING_OBSERVATION_SEARCH_TOP_K": 20
+    }
+  },
+  "sft": {
+    "arguments": [
+      "--max-length",
+      "24576",
+      "--liger-kernel"
+    ]
+  }
+}

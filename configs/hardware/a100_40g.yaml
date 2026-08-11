@@ -1,0 +1,45 @@
+{
+  "schema_version": "shopping-hardware-profile-v1",
+  "name": "a100_40g",
+  "description": "A100 40 GB cost-aware profile: 12K context, one prompt and four rollouts.",
+  "grpo": {
+    "hydra_overrides": [
+      "data.train_batch_size=1",
+      "data.val_batch_size=1",
+      "data.max_prompt_length=2048",
+      "data.max_response_length=10240",
+      "actor_rollout_ref.actor.ppo_mini_batch_size=1",
+      "actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1",
+      "actor_rollout_ref.actor.ppo_max_token_len_per_gpu=12288",
+      "actor_rollout_ref.rollout.n=4",
+      "actor_rollout_ref.rollout.gpu_memory_utilization=0.28",
+      "actor_rollout_ref.rollout.max_num_seqs=4",
+      "actor_rollout_ref.rollout.max_model_len=12288",
+      "actor_rollout_ref.rollout.max_num_batched_tokens=12288",
+      "actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu=12288",
+      "actor_rollout_ref.rollout.agent.num_workers=4",
+      "actor_rollout_ref.rollout.multi_turn.max_tool_response_length=8192",
+      "actor_rollout_ref.ref.log_prob_max_token_len_per_gpu=12288"
+    ],
+    "environment": {
+      "SHOPPING_HARDWARE_PROFILE": "a100_40g",
+      "SHOPPING_CONTEXT_WINDOW_TOKENS": 12288,
+      "SHOPPING_CONTEXT_GENERATION_RESERVE_TOKENS": 512,
+      "SHOPPING_CONTEXT_SAFETY_MARGIN_TOKENS": 512,
+      "SHOPPING_CONTEXT_INPUT_BUDGET_TOKENS": 8192,
+      "SHOPPING_CONTEXT_COMPACTION_ENABLE": true,
+      "SHOPPING_OBSERVATION_TOKEN_BUDGET": 1024,
+      "SHOPPING_OBSERVATION_DETAIL_TOKEN_BUDGET": 2048,
+      "SHOPPING_OBSERVATION_GENERIC_TOKEN_BUDGET": 512,
+      "SHOPPING_OBSERVATION_SEARCH_TOP_K": 12
+    }
+  },
+  "sft": {
+    "arguments": [
+      "--max-length",
+      "12288",
+      "--qlora",
+      "--liger-kernel"
+    ]
+  }
+}

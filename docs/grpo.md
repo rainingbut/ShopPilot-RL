@@ -47,6 +47,31 @@ Train:
 bash scripts/grpo.sh
 ```
 
+### AutoDL hardware profiles
+
+The cost-aware A100 40 GB profile keeps four rollouts per prompt while reducing
+the prompt batch to one, using a 12,288-token sequence budget and enabling
+complete-turn context compaction:
+
+```bash
+bash scripts/grpo.sh --hardware-profile a100_40g --dry-run
+bash scripts/grpo.sh \
+  --hardware-profile a100_40g \
+  --output outputs/smoke/grpo-a100-40g \
+  -- \
+  trainer.total_training_steps=5 \
+  trainer.save_freq=5
+```
+
+Use the five-step command only after the environment is healthy. It is a memory
+and integration smoke run, not a reported experiment. The near-canonical A800
+80 GB profile is available as `a800_80g`. Profile overrides are applied before
+explicit Hydra overrides, so a deliberate command-line setting wins.
+
+The preflight requires the veRL sequence budget and AgentLoop context window to
+match. This prevents a smaller training tensor budget from silently retaining a
+24K agent context.
+
 Important defaults:
 
 | Setting | Value |
@@ -76,6 +101,7 @@ rates. `skipped_update` records make zero-signal attempts visible even though
 they do not advance the optimizer step.
 
 The canonical configuration is [`configs/grpo.yaml`](../configs/grpo.yaml).
+Hardware profiles live under [`configs/hardware/`](../configs/hardware/).
 Advanced overrides may be appended after `--`:
 
 ```bash

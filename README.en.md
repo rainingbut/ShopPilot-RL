@@ -243,7 +243,7 @@ Stop the model server before training so it releases the GPU.
 ### 4. Train and evaluate SFT
 
 ```bash
-bash scripts/sft.sh
+bash scripts/sft.sh --hardware-profile a100_40g
 bash scripts/serve_model.sh outputs/models/sft-merged
 bash scripts/evaluate.sh sft
 ```
@@ -255,14 +255,25 @@ Stop the model server again before GRPO.
 First inspect the fully resolved launcher without starting CUDA or Ray:
 
 ```bash
-bash scripts/grpo.sh --dry-run
+bash scripts/grpo.sh --hardware-profile a100_40g --dry-run
 ```
 
-Then train:
+First run a five-step memory and integration smoke test; it is not a reported
+experiment:
 
 ```bash
-bash scripts/grpo.sh
+bash scripts/grpo.sh \
+  --hardware-profile a100_40g \
+  --output outputs/smoke/grpo-a100-40g \
+  -- \
+  trainer.total_training_steps=5 \
+  trainer.save_freq=5
 ```
+
+Start the full run with the same profile only after peak memory, effective
+groups and Reward diagnostics are healthy. The profile keeps four rollouts,
+uses one prompt per batch, a 12,288-token sequence budget and complete-turn
+context compaction. Use `a800_80g` for the near-canonical A800 80 GB profile.
 
 Choose a checkpoint using validation metrics and export its actor:
 

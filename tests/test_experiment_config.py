@@ -84,6 +84,27 @@ class ExperimentConfigTest(unittest.TestCase):
         self.assertEqual(experiment["settings"]["epochs"], 4)
         self.assertEqual(experiment["settings"]["save_total_limit"], 4)
 
+    def test_a100_profile_is_available_to_sft_and_grpo_experiments(self):
+        registry = load_registry(ROOT / "configs/experiments.json")
+        sft = resolve_experiment(registry, "sft_baseline")
+        grpo = resolve_experiment(registry, "grpo_baseline")
+
+        sft_command, _, _ = build_experiment(
+            sft,
+            root=ROOT,
+            hardware_profile="a100_40g",
+        )
+        grpo_command, _, _ = build_experiment(
+            grpo,
+            root=ROOT,
+            hardware_profile="a100_40g",
+        )
+
+        self.assertIn("--qlora", sft_command)
+        self.assertIn("--liger-kernel", sft_command)
+        self.assertIn("--hardware-profile", grpo_command)
+        self.assertIn("a100_40g", grpo_command)
+
     def test_dynamic_sampling_and_max_steps_cannot_be_disabled_by_ablation(self):
         registry = load_registry(ROOT / "configs/experiments.json")
         with self.assertRaisesRegex(ValueError, "dynamic_sampling"):

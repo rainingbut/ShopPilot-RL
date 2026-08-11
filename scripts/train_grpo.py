@@ -10,6 +10,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    from scripts.hardware_profile import load_hardware_profile
+except ImportError:  # direct ``python scripts/train_grpo.py`` execution
+    from hardware_profile import load_hardware_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "configs/grpo.yaml"
 DEFAULT_AGENT_CONFIG = ROOT / "configs/agent_loop.yaml"
@@ -44,6 +49,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--experiment-name", default="shopping-agent-grpo")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    parser.add_argument(
+        "--hardware-profile",
+        help="profile name under configs/hardware or a profile path",
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
         "hydra_overrides",
@@ -117,6 +126,19 @@ def build_command(args: argparse.Namespace) -> tuple[list[str], dict[str, str]]:
         logger_override,
         f"trainer.experiment_name={args.experiment_name}",
     ]
+    if args.hardware_profile:
+        try:
+            profile = load_hardware_profile(args.hardware_profile)
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+        overrides.extend(profile["grpo"]["hydra_overrides"])
+        environment.update(
+            {
+                key: str(value).lower() if isinstance(value, bool) else str(value)
+                for key, value in profile["grpo"]["environment"].items()
+            }
+        )
+        environment["SHOPPING_HARDWARE_PROFILE_PATH"] = profile["path"]
     extra = list(args.hydra_overrides)
     if extra[:1] == ["--"]:
         extra = extra[1:]
@@ -144,6 +166,10 @@ def main() -> None:
         "output": environment["GRPO_OUTPUT_DIR"],
         "logger": args.logger,
         "config": str(args.config.resolve()),
+        "hardware_profile": environment.get(
+            "SHOPPING_HARDWARE_PROFILE", "canonical"
+        ),
+        "hardware_profile_path": environment.get("SHOPPING_HARDWARE_PROFILE_PATH"),
     }
     print(json.dumps(audit, ensure_ascii=False, indent=2))
     if args.dry_run:

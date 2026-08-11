@@ -65,7 +65,11 @@ class ShoppingToolAgentLoop(ToolAgentLoop):
         self.context_safety_margin_tokens = int(context_safety_margin_tokens)
         self.context_input_budget_tokens = int(context_input_budget_tokens)
         self.context_preserve_recent_groups = int(context_preserve_recent_groups)
-        self.context_compaction_enable = bool(context_compaction_enable)
+        self.context_compaction_enable = (
+            context_compaction_enable
+            if isinstance(context_compaction_enable, bool)
+            else str(context_compaction_enable).lower() == "true"
+        )
         self.observation_token_budget = int(observation_token_budget)
         self.observation_detail_token_budget = int(observation_detail_token_budget)
         self.observation_generic_token_budget = int(observation_generic_token_budget)

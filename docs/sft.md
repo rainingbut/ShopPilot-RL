@@ -25,6 +25,22 @@ After `bash scripts/setup.sh`:
 bash scripts/sft.sh
 ```
 
+For AutoDL A100 40 GB, select the audited QLoRA + Liger 12K profile:
+
+```bash
+bash scripts/sft.sh --hardware-profile a100_40g
+```
+
+The profile is loaded from `configs/hardware/a100_40g.yaml`. Explicit training
+arguments may follow the profile and take precedence, which is useful for a
+one-step memory smoke run:
+
+```bash
+SFT_ADAPTER_DIR=outputs/smoke/sft-lora \
+SFT_MERGED_DIR=outputs/smoke/sft-merged \
+  bash scripts/sft.sh --hardware-profile a100_40g --max-steps 1
+```
+
 The launcher trains a LoRA adapter and then merges it with the base model:
 
 ```text

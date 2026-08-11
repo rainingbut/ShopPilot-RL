@@ -254,7 +254,7 @@ bash scripts/baseline.sh
 ### 4. 训练并评估 SFT
 
 ```bash
-bash scripts/sft.sh
+bash scripts/sft.sh --hardware-profile a100_40g
 bash scripts/serve_model.sh outputs/models/sft-merged
 bash scripts/evaluate.sh sft
 ```
@@ -266,14 +266,23 @@ bash scripts/evaluate.sh sft
 先只解析并打印最终命令，不启动 CUDA 或 Ray：
 
 ```bash
-bash scripts/grpo.sh --dry-run
+bash scripts/grpo.sh --hardware-profile a100_40g --dry-run
 ```
 
-开始训练：
+先执行 5 step 显存与链路冒烟；它不是正式实验：
 
 ```bash
-bash scripts/grpo.sh
+bash scripts/grpo.sh \
+  --hardware-profile a100_40g \
+  --output outputs/smoke/grpo-a100-40g \
+  -- \
+  trainer.total_training_steps=5 \
+  trainer.save_freq=5
 ```
+
+确认峰值显存、有效 group 和 Reward 正常后，再使用同一 profile 启动正式训练。
+该 profile 保留每题 4 条 rollout，将 prompt batch 降为 1、序列预算降为 12,288，
+并启用按完整工具回合压缩的上下文管理。A800 80 GB 可改用 `a800_80g`。
 
 根据验证集指标选择 Checkpoint，并导出 veRL Actor：
 

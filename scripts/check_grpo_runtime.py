@@ -302,6 +302,8 @@ def validate_training_memory_budget(config):
     rollout = config.actor_rollout_ref.rollout
     reference = config.actor_rollout_ref.ref
 
+    if prompt_length <= 0 or response_length <= 0:
+        raise SystemExit("GRPO prompt and response budgets must be positive")
     if response_length > MAX_SAFE_RESPONSE_LENGTH:
         raise SystemExit(
             "unsafe GRPO response budget: "
@@ -323,11 +325,45 @@ def validate_training_memory_budget(config):
         ("actor.ppo_max_token_len_per_gpu", int(actor.ppo_max_token_len_per_gpu)),
         ("ref.log_prob_max_token_len_per_gpu", int(reference.log_prob_max_token_len_per_gpu)),
     ):
-        if value != MAX_SAFE_SEQUENCE_LENGTH:
+        if value != total_length:
             raise SystemExit(
                 f"unsafe or inconsistent GRPO memory budget: {name} must equal "
-                f"{MAX_SAFE_SEQUENCE_LENGTH}, got {value}"
+                f"the configured sequence length {total_length}, got {value}"
             )
+    train_batch_size = int(config.data.train_batch_size)
+    rollout_number = int(rollout.n)
+    max_num_seqs = int(rollout.max_num_seqs)
+    gpu_memory_utilization = float(rollout.gpu_memory_utilization)
+    if train_batch_size <= 0:
+        raise SystemExit("data.train_batch_size must be positive")
+    if rollout_number < 2:
+        raise SystemExit("GRPO requires actor_rollout_ref.rollout.n >= 2")
+    if max_num_seqs <= 0:
+        raise SystemExit("rollout.max_num_seqs must be positive")
+    if not 0 < gpu_memory_utilization < 1:
+        raise SystemExit("rollout.gpu_memory_utilization must be between 0 and 1")
+
+    context_window = int(
+        os.environ.get("SHOPPING_CONTEXT_WINDOW_TOKENS", MAX_SAFE_SEQUENCE_LENGTH)
+    )
+    generation_reserve = int(
+        os.environ.get("SHOPPING_CONTEXT_GENERATION_RESERVE_TOKENS", 512)
+    )
+    safety_margin = int(os.environ.get("SHOPPING_CONTEXT_SAFETY_MARGIN_TOKENS", 512))
+    input_budget = int(
+        os.environ.get("SHOPPING_CONTEXT_INPUT_BUDGET_TOKENS", 16384)
+    )
+    if context_window != total_length:
+        raise SystemExit(
+            "AgentLoop and veRL context budgets differ: "
+            f"SHOPPING_CONTEXT_WINDOW_TOKENS={context_window}, sequence={total_length}"
+        )
+    maximum_input_budget = context_window - generation_reserve - safety_margin
+    if not 0 < input_budget <= maximum_input_budget:
+        raise SystemExit(
+            "SHOPPING_CONTEXT_INPUT_BUDGET_TOKENS must be positive and no greater than "
+            f"{maximum_input_budget}, got {input_budget}"
+        )
     if bool(actor.use_dynamic_bsz):
         raise SystemExit(
             "actor.use_dynamic_bsz must be false so configured PPO micro batches are enforced"
@@ -363,6 +399,10 @@ def validate_training_memory_budget(config):
                 "max_prompt_length": prompt_length,
                 "max_response_length": response_length,
                 "max_sequence_length": total_length,
+                "hardware_profile": os.environ.get(
+                    "SHOPPING_HARDWARE_PROFILE", "canonical"
+                ),
+                "context_input_budget_tokens": input_budget,
                 "actor_mini_batch_size": actor_mini_batch_size,
                 "actor_micro_batch_size_per_gpu": actor_micro_batch_size,
                 "actor_gradient_accumulation_steps": gradient_accumulation_steps,
@@ -371,6 +411,10 @@ def validate_training_memory_budget(config):
                 "rollout_log_prob_dynamic_batch": False,
                 "reference_micro_batch_size_per_gpu": 1,
                 "reference_dynamic_batch": False,
+                "rollouts_per_prompt": rollout_number,
+                "train_batch_size": train_batch_size,
+                "rollout_max_num_seqs": max_num_seqs,
+                "rollout_gpu_memory_utilization": gpu_memory_utilization,
             },
             sort_keys=True,
         )

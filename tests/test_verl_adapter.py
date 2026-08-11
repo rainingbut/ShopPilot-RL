@@ -40,6 +40,14 @@ def make_tool(name):
 
 
 class VerlAdapterRuntimeTest(unittest.TestCase):
+    def test_agent_loop_parses_profile_boolean_strings_explicitly(self):
+        with patch.object(ToolAgentLoop, "__init__", return_value=None):
+            disabled = ShoppingToolAgentLoop(context_compaction_enable="false")
+            enabled = ShoppingToolAgentLoop(context_compaction_enable="true")
+
+        self.assertFalse(disabled.context_compaction_enable)
+        self.assertTrue(enabled.context_compaction_enable)
+
     def test_agent_loop_preserves_real_verl_metrics_and_exports_shopping_diagnostics(self):
         created = []
 

@@ -11,6 +11,11 @@ import sys
 from copy import deepcopy
 from pathlib import Path
 
+try:
+    from scripts.hardware_profile import load_hardware_profile
+except ImportError:  # direct ``python scripts/run_experiment.py`` execution
+    from hardware_profile import load_hardware_profile
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = ROOT / "configs/experiments.json"
@@ -127,6 +132,7 @@ def build_experiment(
     model: str | Path | None = None,
     train_data: Path | None = None,
     validation_data: Path | None = None,
+    hardware_profile: str | Path | None = None,
 ) -> tuple[list[str], dict[str, str], Path]:
     root = Path(root).resolve()
     output_root = Path(output_root)
@@ -134,6 +140,7 @@ def build_experiment(
         output_root = root / output_root
     output = output_root / experiment["name"]
     settings = experiment["settings"]
+    profile = load_hardware_profile(hardware_profile) if hardware_profile else None
     environment = dict(os.environ)
     source_path = str(root / "src")
     existing_python_path = environment.get("PYTHONPATH")
@@ -165,6 +172,8 @@ def build_experiment(
             command.extend(("--train-count", str(settings["train_count"])))
         if settings["train_ratio"] is not None:
             command.extend(("--train-ratio", str(settings["train_ratio"])))
+        if profile:
+            command.extend(profile["sft"]["arguments"])
         return command, environment, output
 
     low, high = (0.2, 0.2) if settings["clip_mode"] == "symmetric" else (0.2, 0.28)
@@ -184,6 +193,7 @@ def build_experiment(
         "--val-data", str(validation_data or root / "data/grpo/validation.parquet"),
         "--output", str(output),
         "--experiment-name", experiment["name"],
+        *(["--hardware-profile", str(hardware_profile)] if hardware_profile else []),
         "--",
         f"actor_rollout_ref.actor.optim.lr={settings['learning_rate']}",
         f"actor_rollout_ref.rollout.n={settings['rollout_number']}",
@@ -206,6 +216,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model")
     parser.add_argument("--train-data", type=Path)
     parser.add_argument("--validation-data", type=Path)
+    parser.add_argument("--hardware-profile")
     parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
@@ -222,6 +233,7 @@ def main() -> None:
         model=args.model,
         train_data=args.train_data,
         validation_data=args.validation_data,
+        hardware_profile=args.hardware_profile,
     )
     print(json.dumps({"experiment": experiment, "command": command, "output": str(output)}, indent=2))
     if args.dry_run:

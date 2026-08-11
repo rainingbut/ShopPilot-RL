@@ -95,6 +95,45 @@ class PublicEntrypointTest(unittest.TestCase):
         )
         self.assertIn("trainer.logger=[console]", command)
 
+    def test_a100_hardware_profile_precedes_user_overrides(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            model = temporary / "model"
+            model.mkdir()
+            (model / "config.json").write_text("{}", encoding="utf-8")
+            (model / "model.safetensors").write_bytes(b"weights")
+            train = temporary / "train.parquet"
+            train.write_bytes(b"example")
+            validation = temporary / "validation.parquet"
+            validation.write_bytes(b"example")
+            with patch.object(
+                sys,
+                "argv",
+                [
+                    "train_grpo.py",
+                    "--model", str(model),
+                    "--train-data", str(train),
+                    "--val-data", str(validation),
+                    "--output", str(temporary / "output"),
+                    "--hardware-profile", "a100_40g",
+                    "--dry-run",
+                    "--",
+                    "trainer.total_training_steps=5",
+                ],
+            ):
+                args = parse_args()
+            command, environment = build_command(args)
+
+        self.assertEqual(environment["SHOPPING_HARDWARE_PROFILE"], "a100_40g")
+        self.assertEqual(environment["SHOPPING_CONTEXT_WINDOW_TOKENS"], "12288")
+        self.assertEqual(environment["SHOPPING_CONTEXT_COMPACTION_ENABLE"], "true")
+        self.assertIn("data.max_response_length=10240", command)
+        self.assertLess(
+            command.index("data.max_response_length=10240"),
+            command.index("trainer.total_training_steps=5"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

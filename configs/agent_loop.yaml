@@ -9,13 +9,13 @@
   reward_length_max_penalty: ${oc.env:SHOPPING_MAX_LENGTH_PENALTY,0.15}
   required_environment_version: shopsimulator-environment-v2.1
   reward_mode: constraint_aware
-  context_window_tokens: 24576
-  context_generation_reserve_tokens: 512
-  context_safety_margin_tokens: 512
-  context_input_budget_tokens: 16384
+  context_window_tokens: ${oc.env:SHOPPING_CONTEXT_WINDOW_TOKENS,24576}
+  context_generation_reserve_tokens: ${oc.env:SHOPPING_CONTEXT_GENERATION_RESERVE_TOKENS,512}
+  context_safety_margin_tokens: ${oc.env:SHOPPING_CONTEXT_SAFETY_MARGIN_TOKENS,512}
+  context_input_budget_tokens: ${oc.env:SHOPPING_CONTEXT_INPUT_BUDGET_TOKENS,16384}
   context_preserve_recent_groups: 1
-  context_compaction_enable: false
-  observation_token_budget: 1536
-  observation_detail_token_budget: 4096
-  observation_generic_token_budget: 768
-  observation_search_top_k: 20
+  context_compaction_enable: ${oc.env:SHOPPING_CONTEXT_COMPACTION_ENABLE,false}
+  observation_token_budget: ${oc.env:SHOPPING_OBSERVATION_TOKEN_BUDGET,1536}
+  observation_detail_token_budget: ${oc.env:SHOPPING_OBSERVATION_DETAIL_TOKEN_BUDGET,4096}
+  observation_generic_token_budget: ${oc.env:SHOPPING_OBSERVATION_GENERIC_TOKEN_BUDGET,768}
+  observation_search_top_k: ${oc.env:SHOPPING_OBSERVATION_SEARCH_TOP_K,20}

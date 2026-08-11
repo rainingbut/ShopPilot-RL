@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts.check_grpo_runtime import (
     PATCH_MARKER,
@@ -12,6 +14,7 @@ from scripts.check_grpo_runtime import (
     validate_dynamic_sampling,
     validate_training_memory_budget,
 )
+from scripts.hardware_profile import load_hardware_profile
 
 
 class DynamicSamplingConfigTest(unittest.TestCase):
@@ -54,6 +57,38 @@ class DynamicSamplingConfigTest(unittest.TestCase):
             SystemExit, "rollout.log_prob_use_dynamic_bsz must be false"
         ):
             validate_training_memory_budget(dynamic_rollout_log_prob)
+
+    def test_a100_profile_aligns_twelve_k_verl_and_agent_budgets(self):
+        profile = load_hardware_profile("a100_40g")
+        config = compose_runtime_config(profile["grpo"]["hydra_overrides"])
+        environment = {
+            key: str(value).lower() if isinstance(value, bool) else str(value)
+            for key, value in profile["grpo"]["environment"].items()
+        }
+
+        with patch.dict(os.environ, environment, clear=False):
+            validate_training_memory_budget(config)
+
+        self.assertEqual(config.data.max_prompt_length, 2048)
+        self.assertEqual(config.data.max_response_length, 10240)
+        self.assertEqual(config.actor_rollout_ref.rollout.n, 4)
+        self.assertEqual(config.actor_rollout_ref.rollout.max_model_len, 12288)
+        self.assertEqual(config.actor_rollout_ref.rollout.max_num_seqs, 4)
+
+    def test_smaller_verl_budget_without_agent_alignment_is_rejected(self):
+        profile = load_hardware_profile("a100_40g")
+        config = compose_runtime_config(profile["grpo"]["hydra_overrides"])
+        with patch.dict(
+            os.environ,
+            {
+                "SHOPPING_CONTEXT_WINDOW_TOKENS": "24576",
+                "SHOPPING_CONTEXT_INPUT_BUDGET_TOKENS": "16384",
+            },
+            clear=False,
+        ), self.assertRaisesRegex(
+            SystemExit, "AgentLoop and veRL context budgets differ"
+        ):
+            validate_training_memory_budget(config)
 
     def test_hydra_overrides_resolve_project_top_level_config(self):
         config = compose_runtime_config(
