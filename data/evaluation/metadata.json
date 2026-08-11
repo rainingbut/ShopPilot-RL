@@ -1,0 +1,9 @@
+{
+  "schema_version": "shopping-evaluation-dataset-v1",
+  "environment": "shopsimulator-environment-v2.1",
+  "reward": "shopsimulator-reward-v3",
+  "path": "data/evaluation/tasks.jsonl",
+  "tasks": 200,
+  "sha256": "2c4ff070e13ddc30796d38e85170210e7d3c211992425a62090f2419fe8e0208",
+  "training_overlap": 0
+}
