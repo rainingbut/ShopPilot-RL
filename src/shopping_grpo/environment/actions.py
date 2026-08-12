@@ -26,6 +26,10 @@ TOOL_ARGUMENT_NAMES = {
     tool["function"]["name"]: set(tool["function"]["parameters"].get("properties", {}))
     for tool in SHOP_TOOL_SCHEMAS
 }
+TOOL_REQUIRED_ARGUMENT_NAMES = {
+    tool["function"]["name"]: set(tool["function"]["parameters"].get("required", []))
+    for tool in SHOP_TOOL_SCHEMAS
+}
 
 
 def action_reject_reason(name, arguments, observation):
@@ -34,9 +38,16 @@ def action_reject_reason(name, arguments, observation):
 检查顺序很重要：先拦截 schema 外字段，再处理无需页面状态的动作，最后只允许
 点击最新 observation 中仍然存在的目标。
 """
+    if name not in TOOL_ARGUMENT_NAMES or not isinstance(arguments, dict):
+        return "unknown_or_invalid_tool"
     extra_argument_names = _schema_extra_argument_names(name, arguments)
     if extra_argument_names:
         return "schema_extra_arguments:" + ",".join(extra_argument_names)
+    missing_argument_names = sorted(
+        TOOL_REQUIRED_ARGUMENT_NAMES[name] - set(arguments)
+    )
+    if missing_argument_names:
+        return "schema_missing_arguments:" + ",".join(missing_argument_names)
     if name == "think":
         return None
     if name == "finish_without_purchase":
@@ -70,7 +81,7 @@ def action_reject_reason(name, arguments, observation):
 
 
 def _schema_extra_argument_names(name, arguments):
-    """只拒绝 schema 未声明字段；缺少必填字段仍由工具动作转换报错。"""
+    """返回 schema 未声明字段；必填字段由主守卫单独检查。"""
     allowed_names = TOOL_ARGUMENT_NAMES.get(name)
     if allowed_names is None or not isinstance(arguments, dict):
         return []

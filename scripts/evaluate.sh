@@ -18,4 +18,5 @@ exec "$ROOT/.venv/bin/python" scripts/evaluate_shop_benchmark.py \
   --base-url "$SHOPSIM_BASE_URL" \
   --model "$SERVED_MODEL_NAME" \
   --llm-base-url "$LLM_BASE_URL" \
-  --api-key "$LLM_API_KEY"
+  --api-key "$LLM_API_KEY" \
+  --context-compaction

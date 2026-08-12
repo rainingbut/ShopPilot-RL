@@ -372,6 +372,35 @@ class RolloutTest(unittest.TestCase):
             )
         )
 
+    def test_collect_for_task_blocks_missing_required_argument_then_recovers(self):
+        client = MockClient(
+            [
+                assistant_tool("search_products", {}, "call_missing_query"),
+                assistant_tool("search_products", {"query": "乳胶枕"}, "call_search"),
+                assistant_tool("open_product", {"asin": PRODUCT_ASIN}, "call_open"),
+                assistant_tool("buy_now", {}, "call_buy"),
+            ]
+        )
+        env = FakeEnv()
+
+        trajectory = collect_for_task(
+            {"task_id": 6641},
+            client=client,
+            env_factory=lambda **kwargs: env,
+            base_url="http://shop.test",
+            max_steps=4,
+        )
+
+        self.assertEqual(trajectory["status"], "done")
+        self.assertEqual(
+            trajectory["blocked_tool_calls"][0]["reason"],
+            "schema_missing_arguments:query",
+        )
+        self.assertEqual(
+            env.actions,
+            ["search[乳胶枕]", f"click[{PRODUCT_ASIN}]", "click[Buy Now]"],
+        )
+
     def test_collect_for_task_allows_current_page_navigation_after_option_selection(self):
         """选择规格后仍由环境当前页面决定能否浏览，采集器不另造状态机。"""
         class OptionEnv(FakeEnv):
