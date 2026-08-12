@@ -5,12 +5,38 @@ import tempfile
 
 from shopping_grpo.environment.manifest import (
     MANIFEST_VERSION,
+    sha256_file,
     shopsimulator_source_commit,
     validate_manifest,
 )
 
 
+RUNTIME_FILES = {
+    "observation.py": "environments/ShopSimulator/shop_env/web_agent_site/engine/observation.py",
+    "pack_api.py": "environments/ShopSimulator/shop_env/shop_env/pack_api.py",
+    "reward.py": "environments/ShopSimulator/shop_env/web_agent_site/engine/reward.py",
+    "slot_lease_pool.py": "environments/ShopSimulator/shop_env/shop_env/slot_lease_pool.py",
+    "web_agent_text_env.py": (
+        "environments/ShopSimulator/shop_env/web_agent_site/envs/web_agent_text_env.py"
+    ),
+}
+
+
 class EnvironmentManifestTest(unittest.TestCase):
+    def test_frozen_runtime_hashes_match_embedded_environment(self):
+        root = Path(__file__).resolve().parents[1]
+        manifest = json.loads(
+            (root / "data/environment.json").read_text(encoding="utf-8")
+        )
+
+        self.assertEqual(
+            manifest["runtime_files_sha256"],
+            {
+                name: sha256_file(root / relative_path)
+                for name, relative_path in RUNTIME_FILES.items()
+            },
+        )
+
     def test_current_environment_contract_is_validated(self):
         manifest = {
             "manifest_version": MANIFEST_VERSION,
