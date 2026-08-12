@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.train_grpo import build_command, parse_args
+from scripts.train_grpo import build_command, build_preflight_command, parse_args
 from shopping_grpo.cli import main as cli_main
 from shopping_grpo.smoke import run_cpu_smoke
 
@@ -133,6 +133,11 @@ class PublicEntrypointTest(unittest.TestCase):
             command.index("data.max_response_length=10240"),
             command.index("trainer.total_training_steps=5"),
         )
+
+        preflight = build_preflight_command(command)
+        self.assertIn("data.max_response_length=10240", preflight)
+        self.assertIn("trainer.total_training_steps=5", preflight)
+        self.assertNotIn("--config-name=grpo", preflight)
 
 
 if __name__ == "__main__":

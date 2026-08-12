@@ -154,6 +154,23 @@ def build_command(args: argparse.Namespace) -> tuple[list[str], dict[str, str]]:
     return command, environment
 
 
+def build_preflight_command(training_command: list[str]) -> list[str]:
+    """Reuse the resolved Hydra overrides for the runtime preflight."""
+    try:
+        config_index = next(
+            index
+            for index, argument in enumerate(training_command)
+            if argument.startswith("--config-name=")
+        )
+    except StopIteration as exc:
+        raise ValueError("training command is missing --config-name") from exc
+    return [
+        sys.executable,
+        str(ROOT / "scripts/check_grpo_runtime.py"),
+        *training_command[config_index + 1 :],
+    ]
+
+
 def main() -> None:
     args = parse_args()
     command, environment = build_command(args)
@@ -175,12 +192,7 @@ def main() -> None:
     if args.dry_run:
         return
     Path(environment["GRPO_OUTPUT_DIR"]).mkdir(parents=True, exist_ok=True)
-    preflight = [
-        sys.executable,
-        str(ROOT / "scripts/check_grpo_runtime.py"),
-        *overrides,
-        *extra,
-    ]
+    preflight = build_preflight_command(command)
     preflight_status = subprocess.call(preflight, cwd=ROOT, env=environment)
     if preflight_status:
         raise SystemExit(preflight_status)
