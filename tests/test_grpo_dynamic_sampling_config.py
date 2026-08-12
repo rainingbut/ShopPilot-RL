@@ -17,7 +17,16 @@ from scripts.check_grpo_runtime import (
 from scripts.hardware_profile import load_hardware_profile
 
 
+CANONICAL_CONTEXT_ENVIRONMENT = {
+    "SHOPPING_CONTEXT_WINDOW_TOKENS": "24576",
+    "SHOPPING_CONTEXT_GENERATION_RESERVE_TOKENS": "512",
+    "SHOPPING_CONTEXT_SAFETY_MARGIN_TOKENS": "512",
+    "SHOPPING_CONTEXT_INPUT_BUDGET_TOKENS": "16384",
+}
+
+
 class DynamicSamplingConfigTest(unittest.TestCase):
+    @patch.dict(os.environ, CANONICAL_CONTEXT_ENVIRONMENT, clear=False)
     def test_training_memory_budget_enforces_real_micro_batch_one(self):
         config = compose_runtime_config([])
         validate_training_memory_budget(config)
@@ -39,6 +48,7 @@ class DynamicSamplingConfigTest(unittest.TestCase):
             config.actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu, 1
         )
 
+    @patch.dict(os.environ, CANONICAL_CONTEXT_ENVIRONMENT, clear=False)
     def test_training_memory_budget_rejects_unsafe_overrides(self):
         unsafe_response = compose_runtime_config(["data.max_response_length=24576"])
         with self.assertRaisesRegex(SystemExit, "unsafe GRPO response budget"):
