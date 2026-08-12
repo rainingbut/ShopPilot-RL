@@ -10,4 +10,4 @@ if [[ ! -x "$ENV_DIR/bin/python" ]]; then
 fi
 
 export PATH="$ENV_DIR/bin:$PATH"
-exec "$ROOT/environments/ShopSimulator/shop_env/start.sh"
+exec bash "$ROOT/environments/ShopSimulator/shop_env/start.sh"
