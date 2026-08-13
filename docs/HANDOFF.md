@@ -1,6 +1,6 @@
 # ShopPilot-RL 后续会话交接说明
 
-更新时间：2026-08-13
+更新时间：2026-08-13（GRPO step 75 正式评测完成后）
 
 ## 1. 项目目标与约束
 
@@ -118,49 +118,83 @@ outputs/models/sft-merged
 AutoDL 输出略有差别。正式报告以保存的本次 AutoDL 原始轨迹、summary、commit 和
 配置为准。
 
-### GRPO 仍处于 5-step 冒烟阶段
+### GRPO 训练、导出和正式评测已完成
 
-第一次使用 `a100_40g` profile（12,288 token、4 rollouts、4 并发、vLLM 0.28）时
-发生 CUDA OOM：峰值约 `48176 / 49140 MiB`，随后仍需申请 `3.60 GiB`。失败后显存
-已释放到约 1 MiB，无已知僵尸训练进程。
+历史故障：第一次使用 `a100_40g` profile（12,288 token、4 rollouts、4 并发）时发生
+CUDA OOM，峰值约 `48176 / 49140 MiB`，随后仍需申请 `3.60 GiB`。该失败目录不是本次
+正式结果。
 
-本地已准备、仍需同步到 AutoDL 的 48 GB 修改：
+之后改用已提交的 `rtx4090_48g` profile：
 
-- 新增 `configs/hardware/rtx4090_48g.yaml`。
-- 保留 `rollout.n=4`，总序列改为 10,240（prompt 2,048 + response 8,192）。
-- `max_num_seqs` 和 Agent workers 改为 2，vLLM 显存比例改为 0.20。
-- 工具响应预算改为 4,096，继续使用完整工具回合上下文压缩。
-- `entropy_coeff=0` 时关闭 `calculate_entropy`，避免约 3.6 GiB、不进入 loss 的
-  全词表 entropy 张量；preflight 会阻止该浪费重新出现。
+- 总序列 10,240（prompt 2,048 + response 8,192），`rollout.n=4`。
+- `max_num_seqs=2`、Agent workers 2、vLLM 显存比例 0.20。
+- 工具响应预算 4,096，并启用完整工具回合上下文压缩。
+- `entropy_coeff=0` 时设置 `calculate_entropy=false`，避免不进入 loss 的全词表
+  entropy 张量。
 
-潜在质量影响只主要来自 12K → 10K 上下文，极长轨迹会更早压缩。降低并发只影响
-吞吐；关闭零权重 entropy 不改变训练目标；GRPO 组大小仍为 4。
+5-step smoke 使用 `outputs/smoke/grpo-rtx4090-48g-v2`，完成 5 个真实 optimizer
+steps，产生 `global_step_5`，无 skipped update、OOM、overlong 或 infrastructure
+invalid。GPU 峰值为 `36322 / 49140 MiB`，余量约 12.5 GiB。日志末尾的
+`DataLoader worker ... Killed` 发生在训练、checkpoint 和 final validation 完成后的
+`atexit` 收尾阶段，不影响结果。
 
-重要：仓库已有 `experiments/grpo/summary.json` 是既有归档，不代表本次 AutoDL
-GRPO 已完成。本次尚未成功跑完 5 steps，更没有本次正式 100-step 结果。
+正式训练使用：
+
+```text
+outputs/models/grpo-rtx4090-48g-100step
+outputs/logs/grpo-rtx4090-48g-100step.log
+```
+
+训练完成 100 个 optimizer steps，无缺步；共记录 170 个 generation batches、100 个
+optimizer steps 和 9 个 skipped updates。9 次跳过均不连续，最大连续次数为 1，远低于
+上限 10。训练用 400 条 rollout 全部正常终止，无 overlong、infrastructure invalid
+或 reward unverifiable。最大 response length 为 5,434；约 42% 的训练 rollout 触发
+上下文压缩，无 critical footer failure。Torch 最大 allocated 约 22.92 GiB、reserved
+约 35.07 GiB，CPU memory 指标最高约 95.94 GiB；总耗时约 1 小时 36 分。
+
+各 checkpoint 的冻结 validation reward：
+
+```text
+step 0:   0.1216921
+step 25:  0.1766312
+step 50:  0.1984645
+step 75:  0.2139387  <- 最优
+step 100: 0.1673449
+```
+
+按预先约定的 validation 指标选择 `global_step_75`，不使用最后的 step 100。已导出为：
+
+```text
+outputs/models/grpo-step75-merged-v1
+```
+
+导出目录约 4.2 GiB，含 `model.safetensors`、`config.json`、tokenizer、chat template
+和 LoRA adapter。10 题 pilot 完成 10/10，严格成功 7/10，mean reward 0.661995，
+无 context overflow 或基础设施错误。
+
+冻结 200 题正式评测已完成，详见第 7 节。重要：仓库已有
+`experiments/grpo/summary.json` 仍是历史归档，不能作为本次 AutoDL 结果。本次结果只以
+`outputs/evaluation/grpo-step75-200-v1` 的轨迹、summary、日志、commit 和配置为准。
 
 ## 4. 新会话首先执行
 
 1. 完整阅读根目录 `AGENTS.md` 和本文档。
 2. 检查 `git status --short`，不得覆盖用户已有修改。
-3. 确认 48 GB profile 修改已提交并推送到 `a100adaption`，再在 AutoDL 拉取。
-4. 在 AutoDL 跑完整 pytest 和 dry-run。
-5. 只重跑 5-step smoke；通过前不启动正式 100-step。
+3. 不要重跑训练、重新选 checkpoint、重复导出或重复运行 200 题评测。
+4. 确认 WinSCP 备份及 SHA-256 校验完整，特别是训练 checkpoint、step 75 merged、
+   diagnostics、日志以及正式评测轨迹和 summary。
+5. 如需整理最终报告，只读取本次真实产物；不要引用历史
+   `experiments/grpo/summary.json` 代替本次结果。
 
 ```bash
 cd /root/autodl-tmp/ShopPilot-RL
 git status --short
-git switch a100adaption
-git pull --ff-only origin a100adaption
+git rev-parse HEAD
+df -h /root/autodl-tmp
 
-.venv/bin/python -m pytest -q
-
-PYTHONPATH=environments/ShopSimulator/shop_env \
-  environments/ShopSimulator/.venv-shopsim/bin/python \
-  -m pytest -q environments/ShopSimulator/shop_env/tests
+cat outputs/evaluation/grpo-step75-200-v1/summary.json
+wc -l outputs/evaluation/grpo-step75-200-v1/trajectories.jsonl
 ```
-
-期望主测试全部通过、ShopSimulator 43 passed；Ray deprecation warning 可忽略。
 
 ## 5. 各终端启动指令
 
@@ -200,12 +234,12 @@ bash scripts/serve_model.sh outputs/models/sft-merged \
   2>&1 | tee outputs/logs/serve-sft.log
 ```
 
-导出 GRPO 后：
+本次 GRPO step 75：
 
 ```bash
 cd /root/autodl-tmp/ShopPilot-RL
-bash scripts/serve_model.sh outputs/models/grpo-merged \
-  2>&1 | tee outputs/logs/serve-grpo.log
+bash scripts/serve_model.sh outputs/models/grpo-step75-merged-v1 \
+  2>&1 | tee outputs/logs/serve-grpo-step75-v1.log
 ```
 
 检查：
@@ -220,14 +254,17 @@ curl --fail --show-error http://127.0.0.1:8000/v1/models \
 
 ### 终端 3：训练或评测
 
-完整评测示例（须用户明确授权）：
+本次正式评测已经完成，不应再次执行。原命令和输出目录为：
 
 ```bash
 cd /root/autodl-tmp/ShopPilot-RL
-bash scripts/evaluate.sh sft 2>&1 | tee outputs/logs/sft-200.log
+EVAL_OUTPUT_DIR="$PWD/outputs/evaluation/grpo-step75-200-v1" \
+  bash scripts/evaluate.sh grpo-step75 \
+  2>&1 | tee outputs/logs/grpo-step75-200-v1.log
 ```
 
-不同模型使用不同 label：`baseline`、`sft`、`grpo`，避免覆盖。
+该目录已有 200 条完整轨迹和 summary；不要覆盖。评测器虽可跳过已完成题目，但没有
+新的明确目的时不应重复执行。
 
 ### 终端 4：GPU 和磁盘监控
 
@@ -244,130 +281,88 @@ nvidia-smi --query-gpu=timestamp,memory.used,memory.total,utilization.gpu \
 watch -n 5 'nvidia-smi; echo; df -h /root/autodl-tmp; echo; free -h'
 ```
 
-## 6. 下一步：重跑 5-step GRPO smoke
+## 6. 已完成的 GRPO 产物
 
-先 dry-run：
-
-```bash
-cd /root/autodl-tmp/ShopPilot-RL
-bash scripts/grpo.sh \
-  --hardware-profile rtx4090_48g \
-  --output outputs/smoke/grpo-rtx4090-48g-v1 \
-  --dry-run
-```
-
-必须看到：
+必须保留：
 
 ```text
-data.max_response_length=8192
-actor_rollout_ref.actor.calculate_entropy=false
-actor_rollout_ref.rollout.n=4
-actor_rollout_ref.rollout.gpu_memory_utilization=0.20
-actor_rollout_ref.rollout.max_num_seqs=2
-actor_rollout_ref.rollout.max_model_len=10240
+outputs/models/grpo-rtx4090-48g-100step/
+outputs/models/grpo-step75-merged-v1/
+outputs/logs/grpo-rtx4090-48g-100step.log
+outputs/evaluation/grpo-step75-pilot-10-v1/
+outputs/logs/grpo-step75-pilot-10-v1.log
+outputs/evaluation/grpo-step75-200-v1/
+outputs/logs/grpo-step75-200-v1.log
+outputs/logs/serve-grpo-step75-v1.log
 ```
 
-停止模型服务并确认 GPU 空闲后：
+`grpo-rtx4090-48g-100step` 约 42 GiB，包含 step 25/50/75/100、optimizer state、
+`data.pt` 和 `training_diagnostics.jsonl`。最佳 checkpoint 是 step 75，但在完整备份和
+校验前不要删除其他 checkpoint。merged 模型约 4.2 GiB。
 
-```bash
-cd /root/autodl-tmp/ShopPilot-RL
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-mkdir -p outputs/logs
+## 7. 冻结 200 题最终结果
 
-bash scripts/grpo.sh \
-  --hardware-profile rtx4090_48g \
-  --output outputs/smoke/grpo-rtx4090-48g-v1 \
-  -- \
-  trainer.total_training_steps=5 \
-  trainer.save_freq=5 \
-  trainer.test_freq=50 \
-  trainer.val_before_train=false \
-  2>&1 | tee outputs/logs/grpo-rtx4090-48g-5step.log
+本次真实 AutoDL 对比：
+
+| 模型 | 完成 | 严格成功 | 严格成功率 |
+|---|---:|---:|---:|
+| Baseline | 200/200 | 2/200 | 1.0% |
+| SFT | 200/200 | 122/200 | 61.0% |
+| GRPO step 75 | 200/200 | 123/200 | 61.5% |
+
+Baseline → SFT 是主要提升，绝对增加 60.0 个百分点。GRPO step 75 相比 SFT 只增加
+1 个严格成功，绝对提升 0.5 个百分点、相对提升约 0.82%；应表述为持平或微增，不能
+宣称显著提升。
+
+GRPO step 75 正式评测：
+
+```text
+expected/completed: 200/200
+done: 200/200 = 100.0%
+strict success: 123/200 = 61.5%
+purchase success: 123/200 = 61.5%
+mean reward / terminal utility: 0.5188845791
+mean weighted score: 0.7730666590
+average steps: 9.42
+gold_purchase: 123
+partial_alternative_purchase: 46
+wrong_purchase: 6
+repeat_loop: 18
+max_steps: 4
+reward_unverifiable: 3
+reward_valid: 197/200 = 98.5%
+context overflow: 0
+critical footer failure: 0
+guard rejection: 16
+evaluation exit code: 0
 ```
 
-不要复用第一次失败的 `outputs/smoke/grpo-a100-40g`。如果新目录非空，先检查内容，
-再改用 `...-v2` 等新目录；不要直接删除未知产物。
-
-完成后收集：
-
-```bash
-tail -n 200 outputs/logs/grpo-rtx4090-48g-5step.log
-
-find outputs/smoke/grpo-rtx4090-48g-v1 \
-  -maxdepth 3 -type f | sort | tail -100
-
-wc -l outputs/smoke/grpo-rtx4090-48g-v1/training_diagnostics.jsonl
-
-grep -E "CUDA out of memory|OutOfMemory|ERROR|Traceback|global_step|reward|effective|skipped" \
-  outputs/logs/grpo-rtx4090-48g-5step.log | tail -160
-
-nvidia-smi
-df -h /root/autodl-tmp
-```
-
-通过标准：
-
-- 无 OOM、Ray worker crash 或环境协议错误。
-- 真正完成 5 个 optimizer steps，而非只生成 5 批 rollout。
-- 产生 `global_step_5` 和 `training_diagnostics.jsonl`。
-- Reward 有限且存在 reward-varying/effective groups。
-- `skipped_update` 未连续触发上限。
-- 峰值最好保留 3–5 GiB，抵御正式训练的长度波动。
-
-## 7. Smoke 成功后的工作
-
-先分析 generation batch、optimizer step、skipped update、有效 group、Reward 分布、
-response length、overlong/context compaction、峰值显存和单步耗时，不立即启动正式训练。
-
-若余量不足 3 GiB，应继续减小上下文或缓存，不要优先把 `rollout.n` 从 4 降到 2。
-若余量明显充足且压缩过多，可以测试 10K 和 12K 之间的档位，但必须重新 smoke。
-
-经用户明确同意后，目标 100-step 命令为：
-
-```bash
-bash scripts/grpo.sh \
-  --hardware-profile rtx4090_48g \
-  --output outputs/models/grpo-rtx4090-48g-100step \
-  -- \
-  trainer.total_training_steps=100 \
-  trainer.save_freq=25 \
-  trainer.test_freq=25
-```
-
-仓库默认是 500 steps，因此 100-step 必须显式覆盖。按 validation 指标选择 checkpoint，
-不能只因为它是最后一步便自动选用。经用户明确同意后导出：
-
-```bash
-bash scripts/export_grpo.sh \
-  outputs/models/grpo-rtx4090-48g-100step/global_step_<N>/actor \
-  outputs/models/grpo-merged
-```
-
-启动导出模型后先跑 10 题 pilot；正常后再经明确授权运行冻结 200 题：
-
-```bash
-bash scripts/evaluate.sh grpo 2>&1 | tee outputs/logs/grpo-200.log
-```
-
-最终比较 strict success、purchase success、mean reward、weighted score、done、
-repeat loop、wrong purchase、reward unverifiable、guard rejection、context overflow 和
-平均步数，并报告 Baseline → SFT → GRPO 的绝对及相对提升。
+`max_context_input_tokens=29336` 统计的是压缩前原始上下文，不是实际提交给 vLLM 的
+请求长度。正式协议输入预算为 `24576 - 512 - 512 = 23552`，超预算时先按完整工具
+回合压缩；因此该值与 `context_overflow_tasks=0` 不矛盾。
 
 ## 8. 产物与磁盘
 
-- SFT 峰值约 10.46 GiB 不代表 GRPO；GRPO 首次峰值已接近 48 GiB。
+- AutoDL 数据盘已扩容为 125 GiB；正式评测结束时使用 91 GiB、剩余约 35 GiB。
+- SFT 峰值约 10.46 GiB 不代表 GRPO；失败的 12K profile 曾接近 48 GiB，成功的
+  10K profile smoke 峰值为 36,322 MiB。
 - 定期运行 `df -h /root/autodl-tmp` 和 `du -sh outputs/* cache/*`。
 - 保留 SFT merged model、正式 GRPO checkpoint、diagnostics、完整评测轨迹、summary、
   训练/GPU 日志和 commit hash。
 - 不直接删除未检查的目录；失败重跑优先用新的版本化输出目录。
-- AutoDL 关机前把关键产物下载或同步至持久数据盘。
+- 已在 `outputs/backups/<timestamp>` 生成备份元数据和 SHA-256 清单；WinSCP 本地备份
+  正在/已经进行。所有 `SHA256SUMS` 校验为 OK 前，不删除 AutoDL 产物。
+- 还要把本次新增的 pilot、正式 200 题目录及对应日志补充下载。
+- 完成备份后可停止 vLLM 和 ShopSimulator；不要在 vLLM 占用约 44.5 GiB 显存时启动
+  任何训练。
 
 ## 9. 新会话开场提示词
 
 ```text
 请先完整阅读 AGENTS.md 和 docs/HANDOFF.md，再检查 git status，不要覆盖已有改动。
-当前真实进度是 Baseline 和 SFT 已完成，GRPO 12K 5-step smoke 因 48GB OOM 失败；
-rtx4090_48g 的 10K 配置已在本地准备。下一步是同步、完整测试和 dry-run，然后只跑
-5-step smoke。不要把 experiments/grpo/summary.json 当成本次训练结果，也不要在未经
-我确认时启动正式训练、合并模型或完整 200 题评测。
+当前 Baseline、SFT、rtx4090_48g 10K GRPO 100-step、step 75 导出、10 题 pilot 和
+冻结 200 题评测均已完成。最佳 checkpoint 是 global_step_75；本次真实严格成功率为
+Baseline 1.0%、SFT 61.0%、GRPO step 75 61.5%，GRPO 仅微增 0.5 个百分点。下一步只做
+备份校验、产物归档和最终报告，不要重跑训练、重新选 checkpoint、重复合并或重复评测，
+也不要把 experiments/grpo/summary.json 当作本次结果。每个新阶段仍需先等我确认。
 ```
