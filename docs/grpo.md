@@ -65,8 +65,22 @@ bash scripts/grpo.sh \
 
 Use the five-step command only after the environment is healthy. It is a memory
 and integration smoke run, not a reported experiment. The near-canonical A800
-80 GB profile is available as `a800_80g`. Profile overrides are applied before
-explicit Hydra overrides, so a deliberate command-line setting wins.
+80 GB profile is available as `a800_80g`. AutoDL RTX 4090 48 GB vGPU instances
+should use `rtx4090_48g`; it retains four samples in each GRPO group while using
+a 10,240-token sequence budget, two concurrent rollout sequences and a smaller
+vLLM cache reservation. Profile overrides are applied before explicit Hydra
+overrides, so a deliberate command-line setting wins.
+
+```bash
+bash scripts/grpo.sh \
+  --hardware-profile rtx4090_48g \
+  --output outputs/smoke/grpo-rtx4090-48g \
+  -- \
+  trainer.total_training_steps=5 \
+  trainer.save_freq=5 \
+  trainer.test_freq=50 \
+  trainer.val_before_train=false
+```
 
 The preflight requires the veRL sequence budget and AgentLoop context window to
 match. This prevents a smaller training tensor budget from silently retaining a
@@ -86,7 +100,7 @@ Important defaults:
 | Maximum training steps | 500 |
 | Save / validation frequency | 50 / 50 |
 | KL reward / KL loss | disabled / disabled |
-| Policy entropy measurement | enabled (logging only) |
+| Policy entropy measurement | disabled (`entropy_coeff=0`) |
 
 Dynamic sampling can generate at most three batches to find a useful update and
 permits at most ten consecutive skipped updates. These bounds prevent an
@@ -96,9 +110,9 @@ Each run also appends `training_diagnostics.jsonl` under its output directory.
 `generation_batch` records contain every generated rollout, its public tool
 sequence, terminal result, reward breakdown, Guard rejection reasons and group
 keep/drop decision. `optimizer_step` records preserve the scalar veRL metrics,
-including entropy, PPO KL, clip fractions, response lengths and effective-group
-rates. `skipped_update` records make zero-signal attempts visible even though
-they do not advance the optimizer step.
+including PPO KL, clip fractions, response lengths and effective-group rates.
+`skipped_update` records make zero-signal attempts visible even though they do
+not advance the optimizer step.
 
 The canonical configuration is [`configs/grpo.yaml`](../configs/grpo.yaml).
 Hardware profiles live under [`configs/hardware/`](../configs/hardware/).

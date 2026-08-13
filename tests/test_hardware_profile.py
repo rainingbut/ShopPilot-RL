@@ -10,13 +10,19 @@ class HardwareProfileTest(unittest.TestCase):
     def test_checked_in_profiles_have_audited_stage_settings(self):
         a100 = load_hardware_profile("a100_40g")
         a800 = load_hardware_profile("a800_80g")
+        rtx4090 = load_hardware_profile("rtx4090_48g")
 
         self.assertIn("--qlora", a100["sft"]["arguments"])
         self.assertIn("--liger-kernel", a100["sft"]["arguments"])
         self.assertIn("--liger-kernel", a800["sft"]["arguments"])
+        self.assertIn("--liger-kernel", rtx4090["sft"]["arguments"])
         self.assertEqual(
             a100["grpo"]["environment"]["SHOPPING_CONTEXT_WINDOW_TOKENS"],
             12288,
+        )
+        self.assertEqual(
+            rtx4090["grpo"]["environment"]["SHOPPING_CONTEXT_WINDOW_TOKENS"],
+            10240,
         )
 
     def test_profile_name_must_match_filename(self):

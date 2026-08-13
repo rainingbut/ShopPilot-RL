@@ -1,0 +1,46 @@
+{
+  "schema_version": "shopping-hardware-profile-v1",
+  "name": "rtx4090_48g",
+  "description": "RTX 4090 48 GB vGPU profile: 10K context, four GRPO rollouts and two-way rollout concurrency.",
+  "grpo": {
+    "hydra_overrides": [
+      "data.train_batch_size=1",
+      "data.val_batch_size=1",
+      "data.max_prompt_length=2048",
+      "data.max_response_length=8192",
+      "actor_rollout_ref.actor.ppo_mini_batch_size=1",
+      "actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1",
+      "actor_rollout_ref.actor.ppo_max_token_len_per_gpu=10240",
+      "actor_rollout_ref.actor.calculate_entropy=false",
+      "actor_rollout_ref.rollout.n=4",
+      "actor_rollout_ref.rollout.gpu_memory_utilization=0.20",
+      "actor_rollout_ref.rollout.max_num_seqs=2",
+      "actor_rollout_ref.rollout.max_model_len=10240",
+      "actor_rollout_ref.rollout.max_num_batched_tokens=10240",
+      "actor_rollout_ref.rollout.log_prob_max_token_len_per_gpu=10240",
+      "actor_rollout_ref.rollout.agent.num_workers=2",
+      "actor_rollout_ref.rollout.multi_turn.max_tool_response_length=4096",
+      "actor_rollout_ref.ref.log_prob_max_token_len_per_gpu=10240"
+    ],
+    "environment": {
+      "SHOPPING_HARDWARE_PROFILE": "rtx4090_48g",
+      "SHOPPING_CONTEXT_WINDOW_TOKENS": 10240,
+      "SHOPPING_CONTEXT_GENERATION_RESERVE_TOKENS": 512,
+      "SHOPPING_CONTEXT_SAFETY_MARGIN_TOKENS": 512,
+      "SHOPPING_CONTEXT_INPUT_BUDGET_TOKENS": 7168,
+      "SHOPPING_CONTEXT_COMPACTION_ENABLE": true,
+      "SHOPPING_OBSERVATION_TOKEN_BUDGET": 1024,
+      "SHOPPING_OBSERVATION_DETAIL_TOKEN_BUDGET": 2048,
+      "SHOPPING_OBSERVATION_GENERIC_TOKEN_BUDGET": 512,
+      "SHOPPING_OBSERVATION_SEARCH_TOP_K": 20
+    }
+  },
+  "sft": {
+    "arguments": [
+      "--max-length",
+      "12288",
+      "--qlora",
+      "--liger-kernel"
+    ]
+  }
+}

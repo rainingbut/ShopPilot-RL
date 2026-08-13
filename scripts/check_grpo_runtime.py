@@ -368,6 +368,11 @@ def validate_training_memory_budget(config):
         raise SystemExit(
             "actor.use_dynamic_bsz must be false so configured PPO micro batches are enforced"
         )
+    if float(actor.entropy_coeff) == 0.0 and bool(actor.calculate_entropy):
+        raise SystemExit(
+            "actor.calculate_entropy must be false when entropy_coeff=0 to avoid "
+            "materializing unused full-vocabulary entropy tensors"
+        )
     actor_micro_batch_size = int(actor.ppo_micro_batch_size_per_gpu)
     actor_mini_batch_size = int(actor.ppo_mini_batch_size)
     try:
@@ -407,6 +412,7 @@ def validate_training_memory_budget(config):
                 "actor_micro_batch_size_per_gpu": actor_micro_batch_size,
                 "actor_gradient_accumulation_steps": gradient_accumulation_steps,
                 "actor_dynamic_batch": False,
+                "actor_calculate_entropy": bool(actor.calculate_entropy),
                 "rollout_log_prob_micro_batch_size_per_gpu": 1,
                 "rollout_log_prob_dynamic_batch": False,
                 "reference_micro_batch_size_per_gpu": 1,

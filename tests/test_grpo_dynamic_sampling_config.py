@@ -33,7 +33,7 @@ class DynamicSamplingConfigTest(unittest.TestCase):
         self.assertEqual(config.data.max_response_length, 20480)
         self.assertEqual(config.actor_rollout_ref.rollout.max_model_len, 24576)
         self.assertFalse(config.actor_rollout_ref.actor.use_dynamic_bsz)
-        self.assertTrue(config.actor_rollout_ref.actor.calculate_entropy)
+        self.assertFalse(config.actor_rollout_ref.actor.calculate_entropy)
         self.assertEqual(
             config.actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu, 1
         )
@@ -84,6 +84,33 @@ class DynamicSamplingConfigTest(unittest.TestCase):
         self.assertEqual(config.actor_rollout_ref.rollout.n, 4)
         self.assertEqual(config.actor_rollout_ref.rollout.max_model_len, 12288)
         self.assertEqual(config.actor_rollout_ref.rollout.max_num_seqs, 4)
+
+    def test_rtx4090_profile_limits_peak_memory_without_reducing_grpo_group(self):
+        profile = load_hardware_profile("rtx4090_48g")
+        config = compose_runtime_config(profile["grpo"]["hydra_overrides"])
+        environment = {
+            key: str(value).lower() if isinstance(value, bool) else str(value)
+            for key, value in profile["grpo"]["environment"].items()
+        }
+
+        with patch.dict(os.environ, environment, clear=False):
+            validate_training_memory_budget(config)
+
+        self.assertEqual(config.data.max_prompt_length, 2048)
+        self.assertEqual(config.data.max_response_length, 8192)
+        self.assertEqual(config.actor_rollout_ref.rollout.n, 4)
+        self.assertEqual(config.actor_rollout_ref.rollout.max_model_len, 10240)
+        self.assertEqual(config.actor_rollout_ref.rollout.max_num_seqs, 2)
+        self.assertEqual(config.actor_rollout_ref.rollout.gpu_memory_utilization, 0.20)
+        self.assertFalse(config.actor_rollout_ref.actor.calculate_entropy)
+
+    @patch.dict(os.environ, CANONICAL_CONTEXT_ENVIRONMENT, clear=False)
+    def test_zero_entropy_coefficient_rejects_unused_entropy_calculation(self):
+        config = compose_runtime_config(
+            ["actor_rollout_ref.actor.calculate_entropy=true"]
+        )
+        with self.assertRaisesRegex(SystemExit, "unused full-vocabulary entropy"):
+            validate_training_memory_budget(config)
 
     def test_smaller_verl_budget_without_agent_alignment_is_rejected(self):
         profile = load_hardware_profile("a100_40g")

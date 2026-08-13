@@ -282,7 +282,8 @@ bash scripts/grpo.sh \
 
 确认峰值显存、有效 group 和 Reward 正常后，再使用同一 profile 启动正式训练。
 该 profile 保留每题 4 条 rollout，将 prompt batch 降为 1、序列预算降为 12,288，
-并启用按完整工具回合压缩的上下文管理。A800 80 GB 可改用 `a800_80g`。
+并启用按完整工具回合压缩的上下文管理。AutoDL RTX 4090 48 GB vGPU 使用
+`rtx4090_48g`（10,240 token、2 路并发）；A800 80 GB 使用 `a800_80g`。
 
 根据验证集指标选择 Checkpoint，并导出 veRL Actor：
 
